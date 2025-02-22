@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .board { display: grid; grid-template-columns: repeat(3, 100px); gap: 5px; margin: 20px auto; width: 310px; }
+        .cell { width: 100px; height: 100px; font-size: 2em; text-align: center; border: 2px solid black; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .cell.disabled { pointer-events: none; color: gray; }
+        button { margin-top: 20px; padding: 10px 20px; font-size: 1em; }
+    </style>
+</head>
+<body>
+<h1>Tic Tac Toe</h1>
+<div class="board" id="board"></div>
+<p id="status">Your turn!</p>
+<button id="resetButton">Reset Game</button>
+
+<script>
+    window.onload = function () {
+        document.getElementById("resetButton").onclick = resetGame;
+        const boardDiv = document.getElementById("board");
+        const statusText = document.getElementById("status");
+        const API_URL = "http://localhost:8080/api";
+
+        function createBoard() {
+            boardDiv.innerHTML = "";
+            fetch(API_URL + "/board")
+                .then(response => response.json())
+                .then(board => {
+                    let playerMoves = 0;
+                    let aiMoves = 0;
+
+                    board.forEach((cell, index) => {
+                        const div = document.createElement("div");
+                        div.classList.add("cell");
+                        div.textContent = cell;
+                        if (cell === "X" || cell === "O") {
+                            div.classList.add("disabled");
+                            if (cell === "X") playerMoves++;
+                            if (cell === "O") aiMoves++;
+                        }
+                        div.onclick = () => makeMove(index);
+                        boardDiv.appendChild(div);
+                    });
+
+                    if (playerMoves > aiMoves) {
+                        setTimeout(aiMove, 500);
+                    }
+                });
+        }
+
+        function makeMove(position) {
+            fetch(API_URL + `/move?position=${position}`, { method: "POST" })
+                .then(response => response.text())
+                .then(message => {
+                    statusText.textContent = message;
+
+
+                    if (message === "OK") {
+                        setTimeout(() => {
+                            aiMove();
+                        }, 1000);
+                    } else {
+
+                        createBoard();
+                    }
+                });
+        }
+
+        function aiMove() {
+            fetch(API_URL + "/ai-move", { method: "POST" })
+                .then(response => response.text())
+                .then(message => {
+                    statusText.textContent = message;
+                    createBoard();
+                });
+        }
+
+        function resetGame() {
+            fetch(API_URL + "/reset", { method: "GET" })
+                .then(response => response.text())
+                .then(() => {
+                    statusText.textContent = "Your turn!";
+                    setTimeout(createBoard, 500);
+                });
+        }
+
+        createBoard();
+    };
+</script>
+</body>
+</html>
